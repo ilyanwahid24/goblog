@@ -1,0 +1,55 @@
+{{ template "layout" . }}
+
+{{ define "content" }}
+<section class="admin-section">
+    <div class="admin-header">
+        <h1>{{ if .Post.ID }}Edit Post{{ else }}New Post{{ end }}</h1>
+        <a href="/admin" class="btn btn-outline">← Back</a>
+    </div>
+
+    <form class="post-form" method="POST"
+        {{ if .Post.ID }}
+            action="/admin/update/{{ .Post.ID }}"
+        {{ else }}
+            action="/admin/create"
+        {{ end }}
+        id="post-form"
+    >
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{ .Post.Title }}" required placeholder="Enter post title...">
+        </div>
+
+        <div class="form-group">
+            <label for="slug">Slug</label>
+            <input type="text" id="slug" name="slug" value="{{ .Post.Slug }}" placeholder="auto-generated-from-title">
+            <small class="form-hint">Leave blank to auto-generate from title</small>
+        </div>
+
+        <div class="form-group">
+            <label for="excerpt">Excerpt</label>
+            <textarea id="excerpt" name="excerpt" rows="2" placeholder="Brief summary of the post...">{{ .Post.Excerpt }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="content">Content <small>(HTML supported)</small></label>
+            <textarea id="content" name="content" rows="16" required placeholder="Write your post content here... HTML tags are supported.">{{ .Post.Content }}</textarea>
+        </div>
+
+        <div class="form-group form-check">
+            <label class="checkbox-label">
+                <input type="checkbox" id="published" name="published" {{ if .Post.Published }}checked{{ end }}>
+                <span class="checkmark"></span>
+                Publish this post
+            </label>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="save-post">
+                {{ if .Post.ID }}Update Post{{ else }}Create Post{{ end }}
+            </button>
+            <a href="/admin" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</section>
+{{ end }}

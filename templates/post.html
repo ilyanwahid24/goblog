@@ -1,0 +1,21 @@
+{{ template "layout" . }}
+
+{{ define "content" }}
+<article class="post-full">
+    <header class="post-header">
+        <a href="/" class="back-link">← Back to all posts</a>
+        <h1 class="post-title">{{ .Post.Title }}</h1>
+        <div class="post-meta">
+            <time datetime="{{ .Post.CreatedAt.Format "2006-01-02" }}">{{ formatDate .Post.CreatedAt }}</time>
+        </div>
+    </header>
+
+    <div class="post-content prose">
+        {{ safeHTML .Post.Content }}
+    </div>
+
+    <footer class="post-footer">
+        <a href="/" class="back-link">← Back to all posts</a>
+    </footer>
+</article>
+{{ end }}

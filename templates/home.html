@@ -1,0 +1,36 @@
+{{ template "layout" . }}
+
+{{ define "content" }}
+<section class="hero">
+    <h1>Welcome to GoBlog</h1>
+    <p class="hero-subtitle">A simple blog powered by Go and PostgreSQL</p>
+</section>
+
+<section class="posts-grid">
+    {{ if .Posts }}
+        {{ range .Posts }}
+        <article class="post-card">
+            <div class="post-card-inner">
+                <div class="post-meta">
+                    <time datetime="{{ .CreatedAt.Format "2006-01-02" }}">{{ formatDate .CreatedAt }}</time>
+                </div>
+                <h2 class="post-card-title">
+                    <a href="/post/{{ .Slug }}">{{ .Title }}</a>
+                </h2>
+                {{ if .Excerpt }}
+                <p class="post-card-excerpt">{{ .Excerpt }}</p>
+                {{ end }}
+                <a href="/post/{{ .Slug }}" class="read-more">
+                    Read more
+                    <span class="arrow">→</span>
+                </a>
+            </div>
+        </article>
+        {{ end }}
+    {{ else }}
+        <div class="empty-state">
+            <p>No posts yet. <a href="/admin">Create your first post</a>.</p>
+        </div>
+    {{ end }}
+</section>
+{{ end }}

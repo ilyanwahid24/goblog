@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    container_name: goblog-postgres
+    environment:
+      POSTGRES_USER: bloguser
+      POSTGRES_PASSWORD: blogpass
+      POSTGRES_DB: blogdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloguser -d blogdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  app:
+    build: .
+    container_name: goblog-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: goblog-postgres
+      DB_PORT: 5432
+      DB_USER: bloguser
+      DB_PASSWORD: blogpass
+      DB_NAME: blogdb
+      PORT: 8080
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+volumes:
+  postgres_data:
