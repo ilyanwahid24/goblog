@@ -7,6 +7,7 @@
         <h1 class="post-title">{{ .Post.Title }}</h1>
         <div class="post-meta">
             <time datetime="{{ .Post.CreatedAt.Format "2006-01-02" }}">{{ formatDate .Post.CreatedAt }}</time>
+            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">By {{ .Post.AuthorName }}</span>
         </div>
     </header>
 
@@ -19,6 +20,57 @@
     <div class="post-content prose">
         {{ safeHTML .Post.Content }}
     </div>
+
+    <hr style="margin: 3rem 0; border: none; border-top: 1px solid var(--border);">
+
+    <section class="comments-section">
+        <h3>Comments</h3>
+
+        {{ if .SuccessMessage }}
+        <div class="alert alert-success" style="background: var(--green-bg); color: var(--green); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 2rem;">
+            {{ .SuccessMessage }}
+        </div>
+        {{ end }}
+
+        <div class="comments-list" style="margin-bottom: 3rem;">
+            {{ if .Comments }}
+                {{ range .Comments }}
+                <div class="comment-item" style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 1rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text);">{{ .AuthorName }}</span>
+                        <time style="font-size: 0.8rem; color: var(--text-dim);">{{ formatDate .CreatedAt }}</time>
+                    </div>
+                    <div style="color: var(--text-muted); line-height: 1.6;">
+                        {{ safeHTML .Content }}
+                    </div>
+                </div>
+                {{ end }}
+            {{ else }}
+                <p style="color: var(--text-dim); font-style: italic;">No comments yet. Be the first to share your thoughts!</p>
+            {{ end }}
+        </div>
+
+        <div class="comment-form-container" style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border);">
+            <h4 style="margin-bottom: 1.5rem;">Leave a comment</h4>
+            <form action="/post/{{ .Post.Slug }}/comment" method="POST">
+                <div class="form-group" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="author_name">Name <small>(optional)</small></label>
+                        <input type="text" id="author_name" name="author_name" placeholder="Anonymous">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="author_email">Email <small>(optional)</small></label>
+                        <input type="email" id="author_email" name="author_email" placeholder="you@example.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="content">Comment *</label>
+                    <textarea id="content" name="content" rows="4" required placeholder="Write your comment here..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Post Comment</button>
+            </form>
+        </div>
+    </section>
 
     <footer class="post-footer">
         <a href="/" class="back-link">← Back to all posts</a>

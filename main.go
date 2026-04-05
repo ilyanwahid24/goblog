@@ -61,8 +61,9 @@ func main() {
 	store := models.NewPostStore(db)
 	userStore := models.NewUserStore(db)
 	sessionStore := models.NewSessionStore(db)
+	commentStore := models.NewCommentStore(db)
 	
-	blogHandler := handlers.NewBlogHandler(store)
+	blogHandler := handlers.NewBlogHandler(store, commentStore)
 	authHandler := handlers.NewAuthHandler(userStore, sessionStore)
 
 	// Setup router
@@ -81,6 +82,7 @@ func main() {
 	// Public routes
 	r.HandleFunc("/", blogHandler.HomePage).Methods("GET")
 	r.HandleFunc("/post/{slug}", blogHandler.PostPage).Methods("GET")
+	r.HandleFunc("/post/{slug}/comment", blogHandler.CreateComment).Methods("POST")
 	r.HandleFunc("/login", authHandler.LoginPage).Methods("GET")
 	r.HandleFunc("/login", authHandler.LoginPost).Methods("POST")
 	r.HandleFunc("/logout", authHandler.Logout).Methods("GET", "POST")
@@ -94,6 +96,9 @@ func main() {
 	adminRouter.HandleFunc("/create", blogHandler.CreatePost).Methods("POST")
 	adminRouter.HandleFunc("/update/{id:[0-9]+}", blogHandler.UpdatePost).Methods("POST")
 	adminRouter.HandleFunc("/delete/{id:[0-9]+}", blogHandler.DeletePost).Methods("POST")
+	adminRouter.HandleFunc("/comments", blogHandler.AdminCommentsPage).Methods("GET")
+	adminRouter.HandleFunc("/comments/{id:[0-9]+}/publish", blogHandler.PublishComment).Methods("POST")
+	adminRouter.HandleFunc("/comments/{id:[0-9]+}/delete", blogHandler.DeleteComment).Methods("POST")
 
 	addr := ":" + serverPort
 	log.Printf("Server running at http://localhost%s", addr)
@@ -108,6 +113,7 @@ func runMigrations(db *sql.DB) error {
 		"migrations/001_create_posts.sql",
 		"migrations/002_create_users.sql",
 		"migrations/003_add_image_to_posts.sql",
+		"migrations/004_add_author_and_comments.sql",
 	}
 
 	for _, file := range migrations {

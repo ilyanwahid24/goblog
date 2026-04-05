@@ -9,15 +9,17 @@ import (
 )
 
 type Post struct {
-	ID        int       `json:"id"`
-	Title     string    `json:"title"`
-	Slug      string    `json:"slug"`
-	Excerpt   string    `json:"excerpt"`
-	Content   string    `json:"content"`
-	ImageURL  string    `json:"image_url"`
-	Published bool      `json:"published"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         int       `json:"id"`
+	Title      string    `json:"title"`
+	Slug       string    `json:"slug"`
+	Excerpt    string    `json:"excerpt"`
+	Content    string    `json:"content"`
+	ImageURL   string    `json:"image_url"`
+	Published  bool      `json:"published"`
+	AuthorID   int       `json:"author_id"`
+	AuthorName string    `json:"author_name"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type PostStore struct {
@@ -40,10 +42,11 @@ func GenerateSlug(title string) string {
 // GetPublishedPosts returns all published posts ordered by creation date
 func (s *PostStore) GetPublishedPosts() ([]Post, error) {
 	rows, err := s.DB.Query(`
-		SELECT id, title, slug, excerpt, content, image_url, published, created_at, updated_at
-		FROM posts
-		WHERE published = true
-		ORDER BY created_at DESC
+		SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image_url, p.published, p.created_at, p.updated_at, COALESCE(u.username, 'Unknown'), COALESCE(p.author_id, 0)
+		FROM posts p
+		LEFT JOIN users u ON p.author_id = u.id
+		WHERE p.published = true
+		ORDER BY p.created_at DESC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query published posts: %w", err)
@@ -53,7 +56,7 @@ func (s *PostStore) GetPublishedPosts() ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var p Post
-		if err := rows.Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt, &p.AuthorName, &p.AuthorID); err != nil {
 			return nil, fmt.Errorf("scan post: %w", err)
 		}
 		posts = append(posts, p)
@@ -64,9 +67,10 @@ func (s *PostStore) GetPublishedPosts() ([]Post, error) {
 // GetAllPosts returns all posts (for admin) ordered by creation date
 func (s *PostStore) GetAllPosts() ([]Post, error) {
 	rows, err := s.DB.Query(`
-		SELECT id, title, slug, excerpt, content, image_url, published, created_at, updated_at
-		FROM posts
-		ORDER BY created_at DESC
+		SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image_url, p.published, p.created_at, p.updated_at, COALESCE(u.username, 'Unknown'), COALESCE(p.author_id, 0)
+		FROM posts p
+		LEFT JOIN users u ON p.author_id = u.id
+		ORDER BY p.created_at DESC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query all posts: %w", err)
@@ -76,7 +80,7 @@ func (s *PostStore) GetAllPosts() ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var p Post
-		if err := rows.Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt, &p.AuthorName, &p.AuthorID); err != nil {
 			return nil, fmt.Errorf("scan post: %w", err)
 		}
 		posts = append(posts, p)
@@ -88,10 +92,11 @@ func (s *PostStore) GetAllPosts() ([]Post, error) {
 func (s *PostStore) GetPostBySlug(slug string) (*Post, error) {
 	var p Post
 	err := s.DB.QueryRow(`
-		SELECT id, title, slug, excerpt, content, image_url, published, created_at, updated_at
-		FROM posts
-		WHERE slug = $1
-	`, slug).Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt)
+		SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image_url, p.published, p.created_at, p.updated_at, COALESCE(u.username, 'Unknown'), COALESCE(p.author_id, 0)
+		FROM posts p
+		LEFT JOIN users u ON p.author_id = u.id
+		WHERE p.slug = $1
+	`, slug).Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt, &p.AuthorName, &p.AuthorID)
 	if err != nil {
 		return nil, fmt.Errorf("query post by slug: %w", err)
 	}
@@ -102,10 +107,11 @@ func (s *PostStore) GetPostBySlug(slug string) (*Post, error) {
 func (s *PostStore) GetPostByID(id int) (*Post, error) {
 	var p Post
 	err := s.DB.QueryRow(`
-		SELECT id, title, slug, excerpt, content, image_url, published, created_at, updated_at
-		FROM posts
-		WHERE id = $1
-	`, id).Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt)
+		SELECT p.id, p.title, p.slug, p.excerpt, p.content, p.image_url, p.published, p.created_at, p.updated_at, COALESCE(u.username, 'Unknown'), COALESCE(p.author_id, 0)
+		FROM posts p
+		LEFT JOIN users u ON p.author_id = u.id
+		WHERE p.id = $1
+	`, id).Scan(&p.ID, &p.Title, &p.Slug, &p.Excerpt, &p.Content, &p.ImageURL, &p.Published, &p.CreatedAt, &p.UpdatedAt, &p.AuthorName, &p.AuthorID)
 	if err != nil {
 		return nil, fmt.Errorf("query post by id: %w", err)
 	}
@@ -117,11 +123,15 @@ func (s *PostStore) CreatePost(p *Post) error {
 	if p.Slug == "" {
 		p.Slug = GenerateSlug(p.Title)
 	}
+	var authorID interface{} = p.AuthorID
+	if p.AuthorID == 0 {
+		authorID = nil
+	}
 	err := s.DB.QueryRow(`
-		INSERT INTO posts (title, slug, excerpt, content, image_url, published)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO posts (title, slug, excerpt, content, image_url, published, author_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
-	`, p.Title, p.Slug, p.Excerpt, p.Content, p.ImageURL, p.Published).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
+	`, p.Title, p.Slug, p.Excerpt, p.Content, p.ImageURL, p.Published, authorID).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("insert post: %w", err)
 	}
@@ -138,6 +148,7 @@ func (s *PostStore) UpdatePost(p *Post) error {
 		SET title = $1, slug = $2, excerpt = $3, content = $4, image_url = $5, published = $6, updated_at = NOW()
 		WHERE id = $7
 	`, p.Title, p.Slug, p.Excerpt, p.Content, p.ImageURL, p.Published, p.ID)
+	// Note: author_id is intentionally not updated here per design choice.
 	if err != nil {
 		return fmt.Errorf("update post: %w", err)
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"go-blog/models"
 	"html/template"
@@ -17,11 +18,12 @@ import (
 )
 
 type BlogHandler struct {
-	Store     *models.PostStore
-	Templates map[string]*template.Template
+	Store        *models.PostStore
+	CommentStore *models.CommentStore
+	Templates    map[string]*template.Template
 }
 
-func NewBlogHandler(store *models.PostStore) *BlogHandler {
+func NewBlogHandler(store *models.PostStore, commentStore *models.CommentStore) *BlogHandler {
 	funcMap := template.FuncMap{
 		"safeHTML": func(s string) template.HTML {
 			return template.HTML(s)
@@ -29,7 +31,7 @@ func NewBlogHandler(store *models.PostStore) *BlogHandler {
 		"formatDate": func(t interface{}) string {
 			switch v := t.(type) {
 			case interface{ Format(string) string }:
-				return v.Format("Jan 2, 2006")
+				return v.Format("Jan 2, 2006 15:04")
 			default:
 				return fmt.Sprintf("%v", v)
 			}
@@ -43,7 +45,7 @@ func NewBlogHandler(store *models.PostStore) *BlogHandler {
 	}
 
 	templates := make(map[string]*template.Template)
-	pages := []string{"home.html", "post.html", "admin.html", "edit.html"}
+	pages := []string{"home.html", "post.html", "admin.html", "edit.html", "admin_comments.html"}
 	for _, page := range pages {
 		t := template.Must(
 			template.New("").Funcs(funcMap).ParseFiles("templates/layout.html", "templates/"+page),
@@ -52,8 +54,9 @@ func NewBlogHandler(store *models.PostStore) *BlogHandler {
 	}
 
 	return &BlogHandler{
-		Store:     store,
-		Templates: templates,
+		Store:        store,
+		CommentStore: commentStore,
+		Templates:    templates,
 	}
 }
 
@@ -89,9 +92,16 @@ func (h *BlogHandler) PostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	comments, err := h.CommentStore.GetCommentsByPostID(post.ID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Error fetching comments: %v", err)
+	}
+
 	data := map[string]interface{}{
-		"Title": post.Title,
-		"Post":  post,
+		"Title":          post.Title,
+		"Post":           post,
+		"Comments":       comments,
+		"SuccessMessage": r.URL.Query().Get("success"),
 	}
 
 	if err := h.Templates["post.html"].ExecuteTemplate(w, "layout", data); err != nil {
@@ -181,6 +191,12 @@ func (h *BlogHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	user, ok := r.Context().Value("user").(*models.User)
+	authorID := 0
+	if ok && user != nil {
+		authorID = user.ID
+	}
+
 	post := &models.Post{
 		Title:     strings.TrimSpace(r.FormValue("title")),
 		Slug:      strings.TrimSpace(r.FormValue("slug")),
@@ -188,6 +204,7 @@ func (h *BlogHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		Content:   r.FormValue("content"),
 		ImageURL:  imageURL,
 		Published: r.FormValue("published") == "on",
+		AuthorID:  authorID,
 	}
 
 	if post.Title == "" || post.Content == "" {
@@ -281,4 +298,104 @@ func (h *BlogHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+}
+
+// CreateComment handles guest comments on a post
+func (h *BlogHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	slug := vars["slug"]
+
+	post, err := h.Store.GetPostBySlug(slug)
+	if err != nil {
+		http.Error(w, "Post Not Found", http.StatusNotFound)
+		return
+	}
+
+	authorName := strings.TrimSpace(r.FormValue("author_name"))
+	if authorName == "" {
+		authorName = "Anonymous"
+	}
+	authorEmail := strings.TrimSpace(r.FormValue("author_email"))
+	content := strings.TrimSpace(r.FormValue("content"))
+
+	if content == "" {
+		http.Error(w, "Comment content cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	comment := &models.Comment{
+		PostID:      post.ID,
+		AuthorName:  authorName,
+		AuthorEmail: authorEmail,
+		Content:     content,
+		IsPublished: false,
+	}
+
+	if err := h.CommentStore.CreateComment(comment); err != nil {
+		log.Printf("Error creating comment: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/post/"+slug+"?success=Comment+submitted+and+awaiting+moderation", http.StatusSeeOther)
+}
+
+// AdminCommentsPage renders the comment moderation panel
+func (h *BlogHandler) AdminCommentsPage(w http.ResponseWriter, r *http.Request) {
+	comments, err := h.CommentStore.GetAllComments()
+	if err != nil {
+		log.Printf("Error fetching comments: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":    "Comments Moderation",
+		"Comments": comments,
+	}
+
+	if err := h.Templates["admin_comments.html"].ExecuteTemplate(w, "layout", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// PublishComment handles accepting a comment
+func (h *BlogHandler) PublishComment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.CommentStore.PublishComment(id); err != nil {
+		log.Printf("Error publishing comment: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/comments", http.StatusSeeOther)
+}
+
+// DeleteComment handles rejecting a comment
+func (h *BlogHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.CommentStore.DeleteComment(id); err != nil {
+		log.Printf("Error deleting comment: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/comments", http.StatusSeeOther)
 }

@@ -20,6 +20,7 @@
                 {{ end }}
                 <div class="post-meta">
                     <time datetime="{{ .CreatedAt.Format "2006-01-02" }}">{{ formatDate .CreatedAt }}</time>
+                    <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">By {{ .AuthorName }}</span>
                 </div>
                 <h2 class="post-card-title">
                     <a href="/post/{{ .Slug }}">{{ .Title }}</a>

@@ -1,0 +1,69 @@
+{{ template "layout" . }}
+
+{{ define "content" }}
+<section class="admin-section">
+    <div class="admin-header">
+        <h1>Comments Moderation</h1>
+        <div>
+            <a href="/admin" class="btn btn-outline" style="margin-right: 1rem;">Back to Posts</a>
+        </div>
+    </div>
+
+    {{ if .Comments }}
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="comments-table">
+            <thead>
+                <tr>
+                    <th>Post</th>
+                    <th>Author</th>
+                    <th>Content</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .Comments }}
+                <tr>
+                    <td>
+                        {{ .PostTitle }}
+                    </td>
+                    <td>
+                        <div><strong>{{ .AuthorName }}</strong></div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">{{ .AuthorEmail }}</div>
+                    </td>
+                    <td>
+                        <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ .Content }}
+                        </div>
+                    </td>
+                    <td>
+                        {{ if .IsPublished }}
+                            <span class="badge badge-published">Published</span>
+                        {{ else }}
+                            <span class="badge badge-draft" style="background: var(--accent-subtle); color: var(--accent);">Pending</span>
+                        {{ end }}
+                    </td>
+                    <td>{{ formatDate .CreatedAt }}</td>
+                    <td class="actions-cell">
+                        {{ if not .IsPublished }}
+                        <form action="/admin/comments/{{ .ID }}/publish" method="POST" style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-primary">Publish</button>
+                        </form>
+                        {{ end }}
+                        <form action="/admin/comments/{{ .ID }}/delete" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this comment?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </div>
+    {{ else }}
+    <div class="empty-state">
+        <p>No comments to moderate.</p>
+    </div>
+    {{ end }}
+</section>
+{{ end }}
