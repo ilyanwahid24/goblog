@@ -52,6 +52,11 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	// Ensure uploads directory exists
+	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+		log.Printf("Warning: failed to create uploads directory: %v", err)
+	}
+
 	// Setup store and handlers
 	store := models.NewPostStore(db)
 	userStore := models.NewUserStore(db)
@@ -66,6 +71,11 @@ func main() {
 	// Static files
 	r.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))),
+	)
+	
+	// Uploaded files
+	r.PathPrefix("/uploads/").Handler(
+		http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))),
 	)
 
 	// Public routes
@@ -97,6 +107,7 @@ func runMigrations(db *sql.DB) error {
 	migrations := []string{
 		"migrations/001_create_posts.sql",
 		"migrations/002_create_users.sql",
+		"migrations/003_add_image_to_posts.sql",
 	}
 
 	for _, file := range migrations {

@@ -7,7 +7,7 @@
         <a href="/admin" class="btn btn-outline">← Back</a>
     </div>
 
-    <form class="post-form" method="POST"
+    <form class="post-form" method="POST" enctype="multipart/form-data"
         {{ if .Post.ID }}
             action="/admin/update/{{ .Post.ID }}"
         {{ else }}
@@ -29,6 +29,17 @@
         <div class="form-group">
             <label for="excerpt">Excerpt</label>
             <textarea id="excerpt" name="excerpt" rows="2" placeholder="Brief summary of the post...">{{ .Post.Excerpt }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="image">Featured Image</label>
+            {{ if .Post.ImageURL }}
+            <div class="image-preview">
+                <img src="{{ .Post.ImageURL }}" alt="Current featured image" class="post-thumbnail" style="max-height: 200px; margin-bottom: 0.5rem; display: block; border-radius: var(--radius-sm);">
+            </div>
+            {{ end }}
+            <input type="file" id="image" name="image" accept="image/*" style="background: var(--bg-input); padding: 0.4rem; border-radius: var(--radius-sm); width: 100%; color: var(--text);">
+            <small class="form-hint">Upload an image to display on the blog page and homepage.</small>
         </div>
 
         <div class="form-group">

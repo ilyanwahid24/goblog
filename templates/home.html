@@ -11,6 +11,13 @@
         {{ range .Posts }}
         <article class="post-card">
             <div class="post-card-inner">
+                {{ if .ImageURL }}
+                <div class="post-thumbnail-wrapper">
+                    <a href="/post/{{ .Slug }}">
+                        <img src="{{ .ImageURL }}" alt="{{ .Title }}" class="post-thumbnail">
+                    </a>
+                </div>
+                {{ end }}
                 <div class="post-meta">
                     <time datetime="{{ .CreatedAt.Format "2006-01-02" }}">{{ formatDate .CreatedAt }}</time>
                 </div>

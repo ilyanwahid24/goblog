@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"go-blog/models"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -159,9 +163,22 @@ func (h *BlogHandler) AdminNewPage(w http.ResponseWriter, r *http.Request) {
 
 // CreatePost handles the creation of a new post
 func (h *BlogHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
+	}
+
+	var imageURL string
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		filename := fmt.Sprintf("%d-%s", time.Now().UnixNano(), filepath.Base(header.Filename))
+		out, err := os.Create(filepath.Join("uploads", filename))
+		if err == nil {
+			defer out.Close()
+			io.Copy(out, file)
+			imageURL = "/uploads/" + filename
+		}
 	}
 
 	post := &models.Post{
@@ -169,6 +186,7 @@ func (h *BlogHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		Slug:      strings.TrimSpace(r.FormValue("slug")),
 		Excerpt:   strings.TrimSpace(r.FormValue("excerpt")),
 		Content:   r.FormValue("content"),
+		ImageURL:  imageURL,
 		Published: r.FormValue("published") == "on",
 	}
 
@@ -197,9 +215,28 @@ func (h *BlogHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
+	}
+
+	existingPost, err := h.Store.GetPostByID(id)
+	if err != nil {
+		http.Error(w, "Post Not Found", http.StatusNotFound)
+		return
+	}
+
+	imageURL := existingPost.ImageURL
+	file, header, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+		filename := fmt.Sprintf("%d-%s", time.Now().UnixNano(), filepath.Base(header.Filename))
+		out, err := os.Create(filepath.Join("uploads", filename))
+		if err == nil {
+			defer out.Close()
+			io.Copy(out, file)
+			imageURL = "/uploads/" + filename
+		}
 	}
 
 	post := &models.Post{
@@ -208,6 +245,7 @@ func (h *BlogHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		Slug:      strings.TrimSpace(r.FormValue("slug")),
 		Excerpt:   strings.TrimSpace(r.FormValue("excerpt")),
 		Content:   r.FormValue("content"),
+		ImageURL:  imageURL,
 		Published: r.FormValue("published") == "on",
 	}
 

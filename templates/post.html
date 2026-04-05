@@ -10,6 +10,12 @@
         </div>
     </header>
 
+    {{ if .Post.ImageURL }}
+    <div class="post-image-wrapper">
+        <img src="{{ .Post.ImageURL }}" alt="{{ .Post.Title }}" class="post-image">
+    </div>
+    {{ end }}
+
     <div class="post-content prose">
         {{ safeHTML .Post.Content }}
     </div>
